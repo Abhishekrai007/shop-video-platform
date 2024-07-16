@@ -9,7 +9,8 @@ const VideoPlayer = () => {
   const [metadata, setMetadata] = useState(null);
   const [currentHotspot, setCurrentHotspot] = useState(null);
   const [showModal, setShowModal] = useState(false);
-
+  const [error, setError] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   useEffect(() => {
     getVideoMetadata().then((response) => setMetadata(response.data));
   }, []);
@@ -28,27 +29,63 @@ const VideoPlayer = () => {
     }
   }, [metadata]);
 
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const data = await getVideoMetadata();
+        setMetadata(data);
+      } catch (err) {
+        setError("Failed to load video metadata");
+      }
+    };
+    fetchMetadata();
+  }, []);
+
+  if (error) return <div>{error}</div>;
+  if (!metadata) return <div>Loading...</div>;
+
   const handleHotspotClick = (hotspot) => {
     setCurrentHotspot(hotspot);
     setShowModal(true);
   };
 
   return (
-    <div>
-      <video ref={videoRef} controls />
-      {metadata &&
+    <div style={{ position: "relative", width: "100%", height: "auto" }}>
+      <video src={metadata.videoUrl} controls style={{ width: "100%" }} />
+      {metadata.hotspots &&
+        metadata.hotspots.length > 0 &&
         metadata.hotspots.map((hotspot, index) => (
-          <Hotspot
+          <div
             key={index}
-            hotspot={hotspot}
-            onClick={() => handleHotspotClick(hotspot)}
+            style={{
+              position: "absolute",
+              top: `${hotspot.position.y}%`,
+              left: `${hotspot.position.x}%`,
+              width: "20px",
+              height: "20px",
+              backgroundColor: "red",
+              borderRadius: "50%",
+              cursor: "pointer",
+            }}
+            onClick={() => handleHotspotClick(hotspot.productId)}
           />
         ))}
-      {showModal && (
-        <ProductModal
-          hotspot={currentHotspot}
-          onClose={() => setShowModal(false)}
-        />
+      {selectedProduct && (
+        <div
+          style={{
+            position: "absolute",
+            top: "10%",
+            left: "10%",
+            backgroundColor: "white",
+            padding: "10px",
+            border: "1px solid black",
+          }}
+        >
+          <h3>{selectedProduct.name}</h3>
+          <p>{selectedProduct.description}</p>
+          <p>Price: ${selectedProduct.price}</p>
+          <button onClick={() => setSelectedProduct(null)}>Close</button>
+        </div>
       )}
     </div>
   );
