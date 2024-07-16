@@ -157,7 +157,38 @@ body {
   border-radius: 8px;
   text-align: center;
 }
-/* VideoPlayer.css */
+
+.video-controls {
+  position: absolute;
+  bottom: 40px; /* Adjust based on your timeline height */
+  left: 0;
+  width: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.video-controls button {
+  background-color: transparent;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 5px 10px;
+}
+
+.video-controls input[type="range"] {
+  width: 100px;
+  margin: 0 10px;
+}
+
+/* Hide native video controls */
+.video-player::-webkit-media-controls {
+  display: none !important;
+}
 
 /* ProductModal.css */
 @media (max-width: 768px) {

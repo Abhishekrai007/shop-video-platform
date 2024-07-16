@@ -16,6 +16,9 @@ const VideoPlayer = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
@@ -74,6 +77,46 @@ const VideoPlayer = () => {
     }
   }, [metadata]);
 
+  const togglePlay = () => {
+    if (videoRef.current.paused) {
+      videoRef.current.play();
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleVolumeChange = (e) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    videoRef.current.volume = newVolume;
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      videoRef.current.requestFullscreen().catch((err) => {
+        console.error(
+          `Error attempting to enable full-screen mode: ${err.message}`
+        );
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
   const handleHotspotClick = async (hotspot) => {
     setIsLoading(true);
     setError(null);
@@ -113,7 +156,19 @@ const VideoPlayer = () => {
 
   return (
     <div className="video-player-container">
-      <video ref={videoRef} className="video-player" />
+      <video ref={videoRef} className="video-player" onClick={togglePlay} />
+      <div className="video-controls">
+        <button onClick={togglePlay}>{isPlaying ? "⏸" : "▶"}</button>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.1"
+          value={volume}
+          onChange={handleVolumeChange}
+        />
+        <button onClick={toggleFullscreen}>{isFullscreen ? "⤓" : "⤢"}</button>
+      </div>
       <div className="hotspot-container">
         {visibleHotspots.map((hotspot, index) => (
           <Hotspot
