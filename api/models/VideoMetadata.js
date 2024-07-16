@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const hotspotSchema = new mongoose.Schema({
     timestamp: Number,
-    productId: mongoose.Schema.Types.ObjectId,
+    productId: String,
     position: {
         x: Number,
         y: Number,
@@ -14,4 +14,4 @@ const videoMetadataSchema = new mongoose.Schema({
     hotspots: [hotspotSchema],
 });
 
-module.exports = mongoose.model('VideoMetadata', videoMetadataSchema);
+module.exports = mongoose.model('VideoMetadata', videoMetadataSchema, 'videometadatas');
