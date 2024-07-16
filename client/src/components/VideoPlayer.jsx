@@ -10,9 +10,9 @@ const VideoPlayer = () => {
   const [visibleHotspots, setVisibleHotspots] = useState([]);
   const [selectedHotspot, setSelectedHotspot] = useState(null);
   const [error, setError] = useState(null);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
 
-  console.log(visibleHotspots);
-  console.log(metadata);
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
@@ -27,143 +27,148 @@ const VideoPlayer = () => {
     fetchMetadata();
   }, []);
 
-  //   useEffect(() => {
-  //     console.log(
-  //       "visibleHotspots updated:",
-  //       JSON.stringify(visibleHotspots, null, 2)
-  //     );
-  //   }, [visibleHotspots]);
-
   useEffect(() => {
-    if (metadata) {
-      console.log("Setting up video with metadata:", metadata);
-      console.log("Current visible hotspots:", visibleHotspots);
-      console.log(
-        "Setting up video with metadata:",
-        JSON.stringify(metadata, null, 2)
-      );
+    if (metadata && videoRef.current) {
       const video = videoRef.current;
 
-      // Define handleTimeUpdate function
       const handleTimeUpdate = () => {
-        const currentTime = video.currentTime;
-        console.log("Current video time:", currentTime);
+        setCurrentTime(video.currentTime);
         const visible = metadata.hotspots.filter(
-          (hotspot) => hotspot.timestamp <= currentTime
-        );
-        console.log(
-          "Updating visible hotspots:",
-          JSON.stringify(visible, null, 2)
+          (hotspot) => Math.abs(hotspot.timestamp - video.currentTime) < 1
         );
         setVisibleHotspots(visible);
       };
 
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          xhrSetup: function (xhr, url) {
-            xhr.withCredentials = true; // Try this if CORS is an issue
-          },
-        });
+      const handleLoadedMetadata = () => {
+        setDuration(video.duration);
+      };
 
+      if (Hls.isSupported()) {
+        const hls = new Hls();
         hls.loadSource(metadata.videoUrl);
         hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, function () {
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
           video.play().catch((error) => {
             console.error("Error attempting to play", error);
           });
-        });
-        hls.on(Hls.Events.ERROR, function (event, data) {
-          console.error("HLS error:", data);
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                console.log(
-                  "Fatal network error encountered, trying to recover"
-                );
-                hls.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                console.log("Fatal media error encountered, trying to recover");
-                hls.recoverMediaError();
-                break;
-              default:
-                console.log("Fatal error, cannot recover");
-                hls.destroy();
-                break;
-            }
-          }
         });
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = metadata.videoUrl;
-        video.addEventListener("loadedmetadata", function () {
+        video.addEventListener("loadedmetadata", () => {
           video.play().catch((error) => {
             console.error("Error attempting to play", error);
           });
         });
-      } else {
-        console.error("This browser does not support HLS playback");
       }
 
-      // Add event listener for timeupdate
       video.addEventListener("timeupdate", handleTimeUpdate);
+      video.addEventListener("loadedmetadata", handleLoadedMetadata);
 
-      // Cleanup function
       return () => {
         video.removeEventListener("timeupdate", handleTimeUpdate);
+        video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       };
     }
-  }, [metadata]); // Remove visibleHotspots from the dependency array
-
-  if (error) return <div>{error}</div>;
-  if (!metadata) return <div>Loading...</div>;
+  }, [metadata]);
 
   const handleHotspotClick = (hotspot) => {
     console.log("Hotspot clicked:", hotspot);
     setSelectedHotspot(hotspot);
   };
 
+  const handleTimelineClick = (e) => {
+    const timeline = e.currentTarget;
+    const clickPosition =
+      (e.clientX - timeline.getBoundingClientRect().left) /
+      timeline.offsetWidth;
+    const newTime = clickPosition * duration;
+    videoRef.current.currentTime = newTime;
+  };
+
+  if (error) return <div>{error}</div>;
+  if (!metadata) return <div>Loading...</div>;
+
   return (
     <div style={{ position: "relative", width: "100%", paddingTop: "56.25%" }}>
-      {error && <div>Error: {error}</div>}
-      {!metadata && !error && <div>Loading...</div>}
-      {metadata && (
-        <>
-          <video
-            ref={videoRef}
-            controls
+      <video
+        ref={videoRef}
+        controls
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          pointerEvents: "none",
+        }}
+      >
+        {visibleHotspots.map((hotspot, index) => (
+          <Hotspot
+            key={index}
+            hotspot={hotspot}
+            onClick={() => handleHotspotClick(hotspot)}
+          />
+        ))}
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          bottom: "-30px",
+          left: 0,
+          width: "100%",
+          height: "20px",
+          backgroundColor: "rgba(0,0,0,0.5)",
+          cursor: "pointer",
+        }}
+        onClick={handleTimelineClick}
+      >
+        {metadata.hotspots.map((hotspot, index) => (
+          <div
+            key={index}
             style={{
               position: "absolute",
-              top: 0,
-              left: 0,
-              width: "50%",
-              height: "50%",
+              left: `${(hotspot.timestamp / duration) * 100}%`,
+              width: "15px",
+              height: "15px",
+              backgroundColor: "red",
+              border: "2px solid white",
+              borderRadius: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              cursor: "pointer",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              videoRef.current.currentTime = hotspot.timestamp;
+              handleHotspotClick(hotspot);
             }}
           />
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              pointerEvents: "none",
-            }}
-          >
-            {visibleHotspots.map((hotspot, index) => (
-              <Hotspot
-                key={index}
-                hotspot={hotspot}
-                onClick={() => handleHotspotClick(hotspot)}
-              />
-            ))}
-          </div>
-          {selectedHotspot && (
-            <ProductModal
-              hotspot={selectedHotspot}
-              onClose={() => setSelectedHotspot(null)}
-            />
-          )}
-        </>
+        ))}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            height: "100%",
+            width: `${(currentTime / duration) * 100}%`,
+            backgroundColor: "red",
+          }}
+        />
+      </div>
+      {selectedHotspot && (
+        <ProductModal
+          hotspot={selectedHotspot}
+          onClose={() => setSelectedHotspot(null)}
+        />
       )}
     </div>
   );

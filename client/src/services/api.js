@@ -14,10 +14,12 @@ export const getVideoMetadata = async () => {
 
 export const getProduct = async (productId) => {
     try {
+        console.log('Fetching product with ID:', productId);
         const response = await axios.get(`${API_URL}/products/${productId}`);
+        console.log('Product data received:', response.data);
         return response.data;
     } catch (error) {
-        console.error('Error fetching product:', error);
+        console.error('Error fetching product:', error.response || error);
         throw error;
     }
 };

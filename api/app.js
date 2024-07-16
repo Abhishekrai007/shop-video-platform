@@ -22,8 +22,12 @@ mongoose.connect('mongodb+srv://test:test@cluster0.kxd8tvy.mongodb.net/?retryWri
     console.error('Error connecting to MongoDB:', error);
 });
 
+
+
 app.use('/api/products', productRoutes);
 app.use('/api/videos', videoRoutes);
+
+
 
 const PORT = process.env.PORT || 5000;
 
