@@ -3,7 +3,7 @@ import Hls from "hls.js";
 import { getVideoMetadata } from "../services/api";
 import Hotspot from "./Hotspot";
 import ProductModal from "./ProductModal";
-
+import { getProduct } from "../services/api";
 const VideoPlayer = () => {
   const videoRef = useRef(null);
   const [metadata, setMetadata] = useState(null);
@@ -12,7 +12,10 @@ const VideoPlayer = () => {
   const [error, setError] = useState(null);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-
+  const [currentProduct, setCurrentProduct] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
@@ -71,46 +74,47 @@ const VideoPlayer = () => {
     }
   }, [metadata]);
 
-  const handleHotspotClick = (hotspot) => {
-    console.log("Hotspot clicked:", hotspot);
+  const handleHotspotClick = async (hotspot) => {
+    setIsLoading(true);
+    setError(null);
     setSelectedHotspot(hotspot);
+    try {
+      const productData = await getProduct(hotspot.productId);
+      setSelectedProduct(productData);
+      window.history.pushState(null, "", `/product/${hotspot.productId}`);
+    } catch (err) {
+      console.error("Error fetching product:", err);
+      setError("Failed to fetch product details");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleTimelineClick = (e) => {
+    const video = videoRef.current;
+    video.pause();
     const timeline = e.currentTarget;
     const clickPosition =
       (e.clientX - timeline.getBoundingClientRect().left) /
       timeline.offsetWidth;
     const newTime = clickPosition * duration;
-    videoRef.current.currentTime = newTime;
+    video.currentTime = newTime;
+    video.play().catch((error) => console.error("Error playing video:", error));
+  };
+
+  const handleCloseModal = () => {
+    setSelectedHotspot(null);
+    // Optionally, update the URL back to the original state
+    window.history.pushState(null, "", "/");
   };
 
   if (error) return <div>{error}</div>;
   if (!metadata) return <div>Loading...</div>;
 
   return (
-    <div style={{ position: "relative", width: "100%", paddingTop: "56.25%" }}>
-      <video
-        ref={videoRef}
-        controls
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          pointerEvents: "none",
-        }}
-      >
+    <div className="video-player-container">
+      <video ref={videoRef} className="video-player" />
+      <div className="hotspot-container">
         {visibleHotspots.map((hotspot, index) => (
           <Hotspot
             key={index}
@@ -119,56 +123,31 @@ const VideoPlayer = () => {
           />
         ))}
       </div>
-      <div
-        style={{
-          position: "absolute",
-          bottom: "-30px",
-          left: 0,
-          width: "100%",
-          height: "20px",
-          backgroundColor: "rgba(0,0,0,0.5)",
-          cursor: "pointer",
-        }}
-        onClick={handleTimelineClick}
-      >
-        {metadata.hotspots.map((hotspot, index) => (
-          <div
-            key={index}
-            style={{
-              position: "absolute",
-              left: `${(hotspot.timestamp / duration) * 100}%`,
-              width: "15px",
-              height: "15px",
-              backgroundColor: "red",
-              border: "2px solid white",
-              borderRadius: "50%",
-              top: "50%",
-              transform: "translate(-50%, -50%)",
-              cursor: "pointer",
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              videoRef.current.currentTime = hotspot.timestamp;
-              handleHotspotClick(hotspot);
-            }}
-          />
-        ))}
+      <div className="custom-timeline" onClick={handleTimelineClick}>
+        {metadata &&
+          metadata.hotspots.map((hotspot, index) => (
+            <div
+              key={index}
+              className="timeline-hotspot"
+              style={{
+                left: `${(hotspot.timestamp / duration) * 100}%`,
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                videoRef.current.currentTime = hotspot.timestamp;
+                handleHotspotClick(hotspot);
+              }}
+            />
+          ))}
         <div
+          className="timeline-progress"
           style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            height: "100%",
             width: `${(currentTime / duration) * 100}%`,
-            backgroundColor: "red",
           }}
         />
       </div>
       {selectedHotspot && (
-        <ProductModal
-          hotspot={selectedHotspot}
-          onClose={() => setSelectedHotspot(null)}
-        />
+        <ProductModal hotspot={selectedHotspot} onClose={handleCloseModal} />
       )}
     </div>
   );

@@ -20,21 +20,20 @@ const ProductModal = ({ hotspot, onClose }) => {
     fetchProduct();
   }, [hotspot]);
 
-  if (error) return <div>Error: {error}</div>;
-  if (!product) return <div>Loading...</div>;
+  if (error) return <div className="modal-error">Error: {error}</div>;
+  if (!product) return <div className="modal-loading">Loading...</div>;
 
   return (
-    <div className="modal">
+    <div className="modal-overlay">
       <div className="modal-content">
         <h2>{product.name}</h2>
+        <img src={product.image} alt={product.name} className="product-image" />
         <p>{product.description}</p>
-        <p>Price: ${product.price}</p>
-        <img
-          src={product.image}
-          alt={product.name}
-          style={{ maxWidth: "200px" }}
-        />
-        <button onClick={onClose}>Close</button>
+        <p className="product-price">Price: ${product.price}</p>
+        <button className="buy-now-button">Buy Now</button>
+        <button className="close-button" onClick={onClose}>
+          Close
+        </button>
       </div>
     </div>
   );
