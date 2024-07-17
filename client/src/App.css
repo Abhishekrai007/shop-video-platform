@@ -7,7 +7,6 @@ body {
   overflow: hidden;
 }
 
-/* VideoPlayer.css */
 .video-player-container {
   position: relative;
   width: 100vw;
@@ -30,7 +29,7 @@ body {
   position: relative;
   width: 100%;
   /* padding-top: 56.25%; */
-  background-color: #000; /* Black background */
+  background-color: #000;
 }
 
 .hotspot-container {
@@ -43,19 +42,35 @@ body {
 }
 
 .custom-timeline {
+  flex-grow: 1;
+  height: 21px;
+  position: relative;
+  cursor: pointer;
+}
+
+.timeline-container {
   position: absolute;
   bottom: 0;
   left: 0;
-  width: 98%;
-  height: 21px;
+  width: 100%;
+  display: flex;
+  align-items: center;
   background-color: rgba(0, 0, 0, 0.7);
+  padding: 5px 10px;
+  box-sizing: border-box;
+}
+
+.time-display {
+  color: white;
+  font-size: 14px;
+  margin: 0 10px;
 }
 
 .timeline-hotspot {
   position: absolute;
   width: 16px;
   height: 16px;
-  background-color: #e50914; /* Netflix red */
+  background-color: #e50914;
   border: 2px solid white;
   border-radius: 50%;
   top: 50%;
@@ -74,12 +89,11 @@ body {
   left: 0;
   top: 0;
   height: 100%;
-  background-color: #e50914; /* Netflix red */
+  background-color: #e50914;
   z-index: 1;
   transition: width 0.1s linear;
 }
 
-/* Hotspot.css */
 .hotspot {
   position: absolute;
   width: 40px;
@@ -98,7 +112,6 @@ body {
   pointer-events: auto;
 }
 
-/* ProductModal.css */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -160,7 +173,7 @@ body {
 
 .video-controls {
   position: absolute;
-  bottom: 40px; /* Adjust based on your timeline height */
+  bottom: 40px;
   left: 0;
   width: 100%;
   background-color: rgba(0, 0, 0, 0.7);
@@ -185,28 +198,38 @@ body {
   margin: 0 10px;
 }
 
-/* Hide native video controls */
 .video-player::-webkit-media-controls {
   display: none !important;
 }
 
-/* ProductModal.css */
 @media (max-width: 768px) {
-  .custom-timeline {
-    height: 40px; /* Increase timeline height for better touch interaction */
-  }
-
   .timeline-hotspot {
     width: 20px;
-    height: 20px; /* Increase hotspot size for easier tapping */
+    height: 20px;
   }
 
   .hotspot {
     width: 60px;
-    height: 60px; /* Further increase hotspot size for mobile */
+    height: 60px;
   }
 
   .video-player {
     object-fit: contain;
+  }
+
+  .timeline-container {
+    padding: 10px;
+  }
+
+  .time-display {
+    font-size: 12px;
+  }
+
+  .custom-timeline {
+    height: 30px;
+  }
+
+  .video-controls {
+    bottom: 60px;
   }
 }

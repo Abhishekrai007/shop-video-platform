@@ -8,12 +8,9 @@ const ProductModal = ({ hotspot, onClose }) => {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        console.log("Fetching product for hotspot:", hotspot);
         const data = await getProduct(hotspot.productId);
-        console.log("Fetched product data:", data);
         setProduct(data);
       } catch (error) {
-        console.error("Error fetching product:", error);
         setError(error.message || "Failed to fetch product");
       }
     };

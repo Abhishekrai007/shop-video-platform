@@ -4,6 +4,7 @@ import { getVideoMetadata } from "../services/api";
 import Hotspot from "./Hotspot";
 import ProductModal from "./ProductModal";
 import { getProduct } from "../services/api";
+
 const VideoPlayer = () => {
   const videoRef = useRef(null);
   const [metadata, setMetadata] = useState(null);
@@ -12,21 +13,18 @@ const VideoPlayer = () => {
   const [error, setError] = useState(null);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-  const [currentProduct, setCurrentProduct] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
         const response = await getVideoMetadata();
-        console.log("Fetched metadata:", response);
         setMetadata(response);
       } catch (err) {
-        console.error("Error fetching metadata:", err);
         setError("Failed to load video metadata");
       }
     };
@@ -49,13 +47,18 @@ const VideoPlayer = () => {
         setDuration(video.duration);
       };
 
+      const handleEnded = () => {
+        setIsPlaying(false);
+        setCurrentTime(duration);
+      };
+
       if (Hls.isSupported()) {
         const hls = new Hls();
         hls.loadSource(metadata.videoUrl);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           video.play().catch((error) => {
-            console.error("Error attempting to play", error);
+            console.error("Error while playing", error);
           });
         });
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
@@ -69,13 +72,15 @@ const VideoPlayer = () => {
 
       video.addEventListener("timeupdate", handleTimeUpdate);
       video.addEventListener("loadedmetadata", handleLoadedMetadata);
+      video.addEventListener("ended", handleEnded);
 
       return () => {
         video.removeEventListener("timeupdate", handleTimeUpdate);
         video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+        video.removeEventListener("ended", handleEnded);
       };
     }
-  }, [metadata]);
+  }, [metadata, duration]);
 
   const togglePlay = () => {
     if (videoRef.current.paused) {
@@ -96,9 +101,7 @@ const VideoPlayer = () => {
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       videoRef.current.requestFullscreen().catch((err) => {
-        console.error(
-          `Error attempting to enable full-screen mode: ${err.message}`
-        );
+        console.error(`Error while enabling full-screen mode: ${err.message}`);
       });
     } else {
       document.exitFullscreen();
@@ -135,20 +138,24 @@ const VideoPlayer = () => {
 
   const handleTimelineClick = (e) => {
     const video = videoRef.current;
-    video.pause();
     const timeline = e.currentTarget;
-    const clickPosition =
-      (e.clientX - timeline.getBoundingClientRect().left) /
-      timeline.offsetWidth;
-    const newTime = clickPosition * duration;
+    const rect = timeline.getBoundingClientRect();
+    const clickPosition = (e.clientX - rect.left) / rect.width;
+    const newTime = Math.min(clickPosition * duration, duration);
     video.currentTime = newTime;
-    video.play().catch((error) => console.error("Error playing video:", error));
   };
 
   const handleCloseModal = () => {
     setSelectedHotspot(null);
-    // Optionally, update the URL back to the original state
     window.history.pushState(null, "", "/");
+  };
+
+  const formatTime = (timeInSeconds) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+    return `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   if (error) return <div>{error}</div>;
@@ -156,7 +163,12 @@ const VideoPlayer = () => {
 
   return (
     <div className="video-player-container">
-      <video ref={videoRef} className="video-player" onClick={togglePlay} />
+      <video
+        ref={videoRef}
+        className="video-player"
+        onClick={togglePlay}
+        onTimeUpdate={() => setCurrentTime(videoRef.current.currentTime)}
+      />
       <div className="video-controls">
         <button onClick={togglePlay}>{isPlaying ? "⏸" : "▶"}</button>
         <input
@@ -178,28 +190,32 @@ const VideoPlayer = () => {
           />
         ))}
       </div>
-      <div className="custom-timeline" onClick={handleTimelineClick}>
-        {metadata &&
-          metadata.hotspots.map((hotspot, index) => (
-            <div
-              key={index}
-              className="timeline-hotspot"
-              style={{
-                left: `${(hotspot.timestamp / duration) * 100}%`,
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                videoRef.current.currentTime = hotspot.timestamp;
-                handleHotspotClick(hotspot);
-              }}
-            />
-          ))}
-        <div
-          className="timeline-progress"
-          style={{
-            width: `${(currentTime / duration) * 100}%`,
-          }}
-        />
+      <div className="timeline-container">
+        <span className="time-display">{formatTime(currentTime)}</span>
+        <div className="custom-timeline" onClick={handleTimelineClick}>
+          {metadata &&
+            metadata.hotspots.map((hotspot, index) => (
+              <div
+                key={index}
+                className="timeline-hotspot"
+                style={{
+                  left: `${(hotspot.timestamp / duration) * 100}%`,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  videoRef.current.currentTime = hotspot.timestamp;
+                  handleHotspotClick(hotspot);
+                }}
+              />
+            ))}
+          <div
+            className="timeline-progress"
+            style={{
+              width: `${Math.min((currentTime / duration) * 100, 100)}%`,
+            }}
+          />
+        </div>
+        <span className="time-display">{formatTime(duration)}</span>
       </div>
       {selectedHotspot && (
         <ProductModal hotspot={selectedHotspot} onClose={handleCloseModal} />
